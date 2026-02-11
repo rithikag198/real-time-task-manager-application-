@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Task, TaskStats, AuthResponse, TasksResponse } from '../types';
+import { User, Task, AuthResponse, TasksResponse } from '../types';
 
 // Create axios instance
 const API = axios.create({

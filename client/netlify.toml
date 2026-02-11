@@ -10,3 +10,8 @@
 
 [build.environment]
   NODE_VERSION = "16"
+
+# Environment variables for production
+[context.production.environment]
+  REACT_APP_API_URL = "https://your-backend-url.com/api"
+  REACT_APP_SERVER_URL = "https://your-backend-url.com"

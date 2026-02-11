@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { taskAPI } from '../services/api';
@@ -20,6 +20,24 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const fetchTasks = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const params: any = {};
+      if (searchQuery) params.search = searchQuery;
+      if (statusFilter !== 'all') params.status = statusFilter;
+
+      const response = await taskAPI.getTasks(params);
+      setTasks(response.tasks);
+      setStats(response.stats);
+      setError('');
+    } catch (error: any) {
+      setError(error.response?.data?.message || 'Failed to fetch tasks');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, statusFilter]);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -36,7 +54,7 @@ const Dashboard: React.FC = () => {
     const handleTaskCreated = (data: any) => {
       if (data.userId === user.id) {
         setTasks(prev => [data.task, ...prev]);
-        updateStats([data.task, ...tasks]);
+        fetchTasks(); // Refetch to update stats
       }
     };
 
@@ -45,16 +63,14 @@ const Dashboard: React.FC = () => {
         setTasks(prev => prev.map(task => 
           task._id === data.task._id ? data.task : task
         ));
-        updateStats(tasks.map(task => 
-          task._id === data.task._id ? data.task : task
-        ));
+        fetchTasks(); // Refetch to update stats
       }
     };
 
     const handleTaskDeleted = (data: any) => {
       if (data.userId === user.id) {
         setTasks(prev => prev.filter(task => task._id !== data.taskId));
-        updateStats(tasks.filter(task => task._id !== data.taskId));
+        fetchTasks(); // Refetch to update stats
       }
     };
 
@@ -68,36 +84,11 @@ const Dashboard: React.FC = () => {
       socketService.offTaskDeleted(handleTaskDeleted);
       socketService.disconnect();
     };
-  }, [user, navigate]);
-
-  const fetchTasks = async () => {
-    try {
-      setIsLoading(true);
-      const params: any = {};
-      if (searchQuery) params.search = searchQuery;
-      if (statusFilter !== 'all') params.status = statusFilter;
-
-      const response = await taskAPI.getTasks(params);
-      setTasks(response.tasks);
-      setStats(response.stats);
-      setError('');
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to fetch tasks');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateStats = (taskList: Task[]) => {
-    const total = taskList.length;
-    const completed = taskList.filter(task => task.status === 'completed').length;
-    const pending = total - completed;
-    setStats({ total, completed, pending });
-  };
+  }, [user, navigate, fetchTasks]);
 
   useEffect(() => {
     fetchTasks();
-  }, [searchQuery, statusFilter]);
+  }, [fetchTasks]);
 
   const handleTaskCreate = async (taskData: { title: string; description?: string }) => {
     try {
